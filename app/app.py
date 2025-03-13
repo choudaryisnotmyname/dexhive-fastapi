@@ -1,7 +1,18 @@
-from fastapi import Depends
+from fastapi import FastAPI, Depends, HTTPException, status, Request
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from util.helper import *
 from app.schemas import *
 from app.settings import PUBLIC, PRIVATE, MIDDLE
+from app.database import check_db_connection, get_db
+from app.models import User
+from typing import List
+from app.routes import router
+
+# Initialize FastAPI app if not already initialized
+app = FastAPI(title="DexHive API")
+
+app.include_router(router, prefix="/api/v1")
 
 ###############################################################
 """PUBLIC PERMISSION: NO ACCESS TOKEN REQUIRED"""
@@ -9,7 +20,11 @@ from app.settings import PUBLIC, PRIVATE, MIDDLE
 
 @app.get(PUBLIC + "health")
 async def health():
-    return {"status": "ok"}
+    db_status = await check_db_connection()
+    return {
+        "status": "ok" if db_status else "error",
+        "database": "connected" if db_status else "disconnected"
+    }
 
 @app.post(PUBLIC + "register")
 async def save_credentials(cred: Credentials, db: AsyncSession = Depends(get_db)):
